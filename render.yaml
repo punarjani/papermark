@@ -1,0 +1,57 @@
+# Render Blueprint — PaperMark API.
+#
+# plan: free is for DEVELOPMENT / PILOT only (sleeps when idle, 512 MB RAM,
+# no background workers, no pre-deploy command). Production: change plan to
+# "starter" or higher, add the worker service below and enable preDeployCommand.
+#
+# Secrets are declared with `sync: false`: Render prompts for them in the dashboard.
+# They are never stored in this file.
+services:
+  - type: web
+    name: papermark-api-dev
+    runtime: python
+    plan: free
+    region: singapore
+    rootDir: backend
+    buildCommand: pip install --upgrade uv && uv sync --frozen --no-dev
+    startCommand: >-
+      uv run --no-sync python -m uvicorn app.main:app
+      --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*"
+    # Paid plans only. On free, run migrations with the `migrate` GitHub workflow.
+    # preDeployCommand: uv run --no-sync alembic upgrade head
+    healthCheckPath: /api/v1/health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.13"
+      - key: ENVIRONMENT
+        value: staging
+      - key: LOG_LEVEL
+        value: INFO
+      - key: DATABASE_SSL
+        value: "true"
+      - key: RUN_JOBS_IN_PROCESS
+        value: "true"
+      - key: AI_PROVIDER
+        value: none
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: SUPABASE_JWT_ISSUER
+        sync: false
+      - key: SUPABASE_JWKS_URL
+        sync: false
+
+  # Production-only (paid): dedicated job runner, keeps OCR/AI/PDF work out of the API.
+  # - type: worker
+  #   name: papermark-worker
+  #   runtime: python
+  #   plan: starter
+  #   rootDir: backend
+  #   buildCommand: pip install --upgrade uv && uv sync --frozen --no-dev
+  #   startCommand: uv run --no-sync python worker.py

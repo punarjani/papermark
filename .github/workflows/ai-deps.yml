@@ -1,0 +1,36 @@
+name: ai-deps
+
+# Verifies the optional OCR/AI dependency group still installs and imports on the
+# Linux/Python 3.12 platform used by AI worker hosts. Runs only when dependencies change.
+on:
+  push:
+    branches: [main]
+    paths: ["backend/pyproject.toml", "backend/uv.lock", ".github/workflows/ai-deps.yml"]
+  pull_request:
+    paths: ["backend/pyproject.toml", "backend/uv.lock", ".github/workflows/ai-deps.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  paddleocr-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --group ai
+      - name: Import smoke test (CPU)
+        env:
+          DISABLE_MODEL_SOURCE_CHECK: "True"
+        run: |
+          uv run python - <<'EOF'
+          import paddle, paddleocr, pymupdf
+          print("paddle", paddle.__version__, "paddleocr", paddleocr.__version__, "pymupdf", pymupdf.__version__)
+          paddle.utils.run_check()
+          from paddleocr import PaddleOCR  # noqa: F401
+          EOF

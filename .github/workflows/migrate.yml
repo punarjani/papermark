@@ -1,0 +1,43 @@
+name: migrate
+
+# Applies Alembic migrations to ONE environment. Manual trigger only.
+# Each GitHub Environment (development / staging / production) holds its own
+# DATABASE_URL secret, so environments can never share credentials.
+# Configure "Required reviewers" on the production environment.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options: [development, staging, production]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migrate-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ${{ inputs.environment }}
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_SSL: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --no-dev
+      - name: Current revision
+        run: uv run alembic current
+      - name: Upgrade
+        run: uv run alembic upgrade head
+      - name: RLS guard
+        run: uv run python -m scripts.check_rls
