@@ -15,9 +15,26 @@ No Docker required. Use only synthetic data in development.
 cd backend
 uv sync                      # Python 3.12 + runtime + dev tools (no AI deps)
 cp .env.example .env         # fill in DEVELOPMENT values; .env is git-ignored
-uv run alembic upgrade head  # apply migrations to the dev database
+uv run python -m alembic upgrade head   # apply migrations to the dev database
 uv run python -m uvicorn app.main:app --reload --port 8000
 ```
+
+### Migrations
+
+Run Alembic as a Python module. This works everywhere and avoids the `alembic.exe` launcher,
+which Windows Smart App Control can block (see below).
+
+```bash
+uv run python -m alembic upgrade head   # apply all pending migrations
+uv run python -m alembic current        # show the applied revision, e.g. "0001 (head)"
+uv run python -m alembic history        # list all revisions
+uv run python -m scripts.check_rls      # fail if any public table lacks forced RLS
+```
+
+`DATABASE_URL` comes from `backend/.env` (git-ignored). For Supabase, use the **Session
+pooler** URI (port 5432) of the **development** project. The direct host is IPv6-only.
+Never paste the connection string into docs, issues, chat or commit messages. Deployed
+environments are migrated through the manual `migrate` workflow, never from a laptop.
 
 - API docs: http://localhost:8000/api/v1/docs (development only)
 - Health: http://localhost:8000/api/v1/health, readiness: `/api/v1/health/ready`
@@ -59,7 +76,11 @@ Phase 8. Ollama is installed separately (https://ollama.com).
 
 If Windows blocks unsigned binaries (`An Application Control policy has blocked this file`):
 
-1. Run tools as modules: `uv run python -m pytest`, `uv run python -m uvicorn …`.
+1. Run tools as modules instead of their `.exe` launchers:
+   - `uv run python -m pytest` (not `uv run pytest`)
+   - `uv run python -m uvicorn …` (not `uv run uvicorn`)
+   - `uv run python -m alembic upgrade head` / `uv run python -m alembic current`
+     (not `uv run alembic`; it fails with `Failed to spawn: alembic … (os error 4551)`)
 2. Install SQLAlchemy without its compiled extension (local venv only; the lockfile and CI
    are unchanged):
 
