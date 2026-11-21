@@ -9,12 +9,19 @@ function response(status: number, data: unknown): AxiosResponse {
 }
 
 describe('toApiError', () => {
-  it('maps a request timeout to TIMEOUT', () => {
-    const err = toApiError(new AxiosError('timeout of 90000ms exceeded', AxiosError.ECONNABORTED))
-    expect(err.code).toBe('TIMEOUT')
-    expect(err.message).toMatch(/starting up/)
-    expect(isTransientError(err)).toBe(true)
-  })
+  it.each([AxiosError.ECONNABORTED, AxiosError.ETIMEDOUT])(
+    'maps a request timeout (%s) to a transient TIMEOUT with a friendly message',
+    (code) => {
+      const err = toApiError(new AxiosError('timeout of 90000ms exceeded', code))
+      expect(err.code).toBe('TIMEOUT')
+      expect(err.status).toBeNull()
+      expect(err.message).toBe(
+        'The server took too long to respond. It may be starting up after being idle. Please try again.',
+      )
+      expect(err.message).not.toMatch(/90000ms/)
+      expect(isTransientError(err)).toBe(true)
+    },
+  )
 
   it('maps a proxy 503 without an error envelope to SERVICE_UNAVAILABLE', () => {
     const ax = new AxiosError('fail', 'ERR_BAD_RESPONSE', undefined, undefined, response(503, '<html>'))
@@ -41,6 +48,8 @@ describe('toApiError', () => {
 describe('createApiClient', () => {
   it('allows 90 s for a cold start', () => {
     expect(API_TIMEOUT_MS).toBe(90_000)
-    expect(createApiClient('https://api.example.edu/api/v1').defaults.timeout).toBe(90_000)
+    const client = createApiClient('https://api.example.edu/api/v1')
+    expect(client.defaults.timeout).toBe(90_000)
+    expect(client.defaults.timeout).toBe(API_TIMEOUT_MS)
   })
 })
