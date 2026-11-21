@@ -38,9 +38,7 @@ jobs:
         env:
           VITE_API_BASE_URL: https://api.invalid/api/v1
         run: npm run build
+      - name: Bundle secret scanner self-test
+        run: node scripts/check-bundle-secrets.mjs --self-test
       - name: No secret keys in bundle
-        run: |
-          if grep -rEl "sb_secret_|service_role" dist; then
-            echo "Secret key material found in the frontend bundle" >&2
-            exit 1
-          fi
+        run: npm run check:bundle

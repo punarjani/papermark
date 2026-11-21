@@ -10,7 +10,8 @@
     "lint": "oxlint --deny-warnings src",
     "test": "vitest run",
     "test:watch": "vitest",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check:bundle": "node scripts/check-bundle-secrets.mjs dist"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.2",
