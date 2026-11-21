@@ -1,0 +1,76 @@
+# ---------------------------------------------------------------
+# Secrets — never commit. Only *.env.example files are allowed.
+# ---------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.env
+!*.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+service-account*.json
+credentials*.json
+client_secret*.json
+token*.json
+.vercel/
+.render/
+supabase/.temp/
+supabase/.branches/
+
+# ---------------------------------------------------------------
+# Student documents and examination data — never commit.
+# Test fixtures must be synthetic and live in backend/tests/fixtures/.
+# ---------------------------------------------------------------
+*.pdf
+!backend/tests/fixtures/**/*.pdf
+*.zip
+*.xlsx
+*.xls
+*.csv
+!backend/tests/fixtures/**/*.csv
+data/
+uploads/
+exports/
+answer-scripts/
+evaluated-scripts/
+*.dump
+*.sql.gz
+*.backup
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/test-results/
+frontend/playwright-report/
+*.tsbuildinfo
+
+# AI models and caches
+.paddleocr/
+models/
+*.onnx
+*.pdparams
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log
