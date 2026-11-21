@@ -28,8 +28,16 @@ export async function getReadiness(): Promise<ReadinessResponse> {
     const { data } = await api().get<ReadinessResponse>('/health/ready')
     return data
   } catch (err) {
-    if (err instanceof AxiosError && err.response?.status === 503 && err.response.data) {
-      return err.response.data as ReadinessResponse
+    // Only our own JSON body counts; a proxy 503 (e.g. an HTML "starting" page) is an error.
+    const body = err instanceof AxiosError ? (err.response?.data as unknown) : undefined
+    if (
+      err instanceof AxiosError &&
+      err.response?.status === 503 &&
+      typeof body === 'object' &&
+      body !== null &&
+      'checks' in body
+    ) {
+      return body as ReadinessResponse
     }
     throw toApiError(err)
   }

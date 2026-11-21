@@ -1,10 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
-import { CheckCircle2, CircleAlert, Loader2, Server } from 'lucide-react'
+import { CheckCircle2, CircleAlert, Loader2, RefreshCw, Server } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 import { getHealth, getReadiness } from '../../api/health'
-import type { ApiError } from '../../lib/api'
+import { isTransientError, type ApiError } from '../../lib/api'
 
 type Tone = 'ok' | 'warn' | 'error' | 'loading'
+
+/** After this long without an answer, explain that the server may be waking up. */
+export const SLOW_HINT_MS = 5_000
 
 function StatusRow({ label, tone, text }: { label: string; tone: Tone; text: string }) {
   const icon = {
@@ -24,10 +28,31 @@ function StatusRow({ label, tone, text }: { label: string; tone: Tone; text: str
   )
 }
 
+function useSlowHint(active: boolean): boolean {
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    if (!active) return
+    const timer = setTimeout(() => setSlow(true), SLOW_HINT_MS)
+    return () => {
+      clearTimeout(timer)
+      setSlow(false)
+    }
+  }, [active])
+  return active && slow
+}
+
 /** Phase 0 page: shows live API liveness and readiness. Replaced by login in Phase 1. */
 export function SystemStatusPage() {
   const health = useQuery({ queryKey: ['health'], queryFn: getHealth })
   const ready = useQuery({ queryKey: ['health', 'ready'], queryFn: getReadiness })
+
+  const fetching = health.isFetching || ready.isFetching
+  const slow = useSlowHint(fetching)
+  const error = (health.error ?? ready.error) as ApiError | null
+  const retry = () => {
+    void health.refetch()
+    void ready.refetch()
+  }
 
   const apiRow: { tone: Tone; text: string } = health.isPending
     ? { tone: 'loading', text: 'Checking…' }
@@ -57,6 +82,30 @@ export function SystemStatusPage() {
           <StatusRow label="API" {...apiRow} />
           <StatusRow label="Database" {...dbRow} />
         </ul>
+
+        {fetching && slow && (
+          <p role="status" className="mt-4 text-sm text-slate-600">
+            The server is waking up. This can take up to a minute after a period of inactivity.
+          </p>
+        )}
+
+        {!fetching && error && (
+          <div className="mt-4 flex items-center justify-between gap-4">
+            <p role="alert" className="text-sm text-slate-600">
+              {isTransientError(error)
+                ? 'This is usually temporary while the server starts.'
+                : 'The status check failed.'}
+            </p>
+            <button
+              type="button"
+              onClick={retry}
+              className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <RefreshCw aria-hidden className="h-4 w-4" />
+              Try again
+            </button>
+          </div>
+        )}
       </div>
     </section>
   )
